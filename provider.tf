@@ -17,7 +17,8 @@ provider "azurerm" {
     }
 
     key_vault {
-      // This setting is not recommended for production key vaults
+      // These settings may not be suitable for production key vaults
+      recover_soft_deleted_key_vaults = true
       purge_soft_delete_on_destroy = true
     }
   }

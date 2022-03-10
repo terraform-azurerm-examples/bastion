@@ -70,7 +70,7 @@ resource "azurerm_key_vault_access_policy" "current" {
 resource "azurerm_key_vault_secret" "private_ssh_key" {
   depends_on   = [azurerm_key_vault_access_policy.current]
   name         = "${var.linux_server_name}-ssh-private-key"
-  value        = file(trimsuffix(var.admin_ssh_public_key_file, ".pub"))
+  value        = file(local.admin_ssh_private_key_file)
   key_vault_id = azurerm_key_vault.bastion.id
 }
 

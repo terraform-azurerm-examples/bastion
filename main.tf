@@ -6,6 +6,7 @@ locals {
   virtual_machine_admins        = distinct(concat([data.azurerm_client_config.current.object_id], var.virtual_machine_admins))
   windows_server_admin_password = coalesce(var.windows_server_admin_password, format("%s!", title(random_pet.vm.id)))
   uniq                          = substr(md5(azurerm_resource_group.bastion.id), 0, 8)
+  admin_ssh_private_key_file    = trimsuffix(var.admin_ssh_public_key_file, ".pub")
 }
 
 resource "random_pet" "vm" {

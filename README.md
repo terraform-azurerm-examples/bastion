@@ -1,22 +1,22 @@
 # Azure Bastion with native client access to AAD authenticated servers
 
-This example configuration creates a small example bastion environment using Terraform.
+This example configuration creates a small Azure Bastion environment using Terraform.
 
-The environment includes a Windows 2022 Azure Edition server and an Ubuntu 20.04 server. Both have the AAD extensions configured.
+The environment includes a Windows 2022 Azure Edition server and an Ubuntu 20.04 server. Both have the AAD extensions configured and some basic Azure tools installed.
 
-This page also has instructions for accessing the servers using the use of native Windows RDP and SSH tools from Windows, and how to use the bastion tunnel for ssh and scp access from linux.
+Terraform will output a set of commands you can then use to connect using native SSH and RDP clients.
 
-Overview:
+## Lab
 
-1. Create the example environment using Terraform
-1. Access the Windows 2022 and Ubuntu 20.04 servers using native RDP and SSH tools, with AAD authentication
+The full lab for Azure Bastion using native clients and AAD authentication is <https://azurecitadel.com/vm/bastion>.
 
 ## Pre-requirements
 
 You will need
 
 * to be Owner on an Azure subscription
-* an [SSH key pair](https://docs.microsoft.com/azure/virtual-machines/linux/mac-create-ssh-keys)
+* an [SSH key pair](https://docs.microsoft.com/en-gb/azure/virtual-machines/linux/mac-create-ssh-keys#create-an-ssh-key-pair), e.g.:
+  * It will use `~/.ssh/id_rsa.pub` by default
 
 ## Create resources
 
@@ -25,7 +25,7 @@ May be run from [Cloud Shell](https://shell.azure.com).
 1. Clone the repo
 
     ```shell
-    git clone https://github.com/terraform-azurerm-examples/bastion-native-client-via-aad bastion
+    git clone https://github.com/terraform-azurerm-examples/bastion
     ```
 
 1. Change directory
@@ -42,9 +42,9 @@ May be run from [Cloud Shell](https://shell.azure.com).
 
 1. Create a terraform.tfvars
 
-    Optional.
+    _Optional_. You may override the default variable values in variables.tf or add in additional AAD object IDs for the Virtual Machine Administrator/User Login roles on the resource group. See variables.tf for details.
 
-    Feel free to override the default variable values in variables.tf or add in additional AAD object IDs for the Virtual Machine Administrator/User Login roles on the resource group.
+    If a windows password is not specified for the admin account then one will be generated and stored in the key vault along with the private key for the SSH key pair. All access should be via AAD authentication, so these credentials are intended for break glass scenarios.
 
 1. Plan
 
@@ -58,76 +58,17 @@ May be run from [Cloud Shell](https://shell.azure.com).
     terraform apply
     ```
 
-    The resources will take about 20 minutes to deploy.
+    Terraform will start to create the resources and will then display the outputs. The resources take about 20 minutes to deploy.
 
-## Resources created
+## Example outputs
 
-| **Resource Type** | **Default Name** | **Notes** |
-|---|---|
-| Resource group | bastion | |
-| Virtual Network | bastion | 172.19.76.0/25, split into two /26 subnets for VMs and Azure Bastion |
-| Bastion | bastion | Standard SKU |
-| SSH Key | ubuntu-ssh-public-key | ~/.ssh/|
-| VM | ubuntu | Ubuntu 20.04 with AAD and Azure tools |
-| VM | windows | Windows 2022 Server Azure Edition with AAD and Azure tools |
-| Key Vault | bastion-############-kv | Secrets: windows password, private SSH key |
-
-## RDP
-
-The command to initiate an RDP session is shown in the Terraform output.
-
-1. Show `terraform output`
-
-    ```shell
-    terraform output
-    ```
-
-    or
-
-    ```shell
-    terraform output rdp_to_windows_server
-    ```
-
-    Example output:
-
-    ```shell
-    az network bastion rdp --name bastion --resource-group bastion --target-resource-id <vmid>
-    ```
-
-    Copy the command.
-
-1. Authenticate
-
-    The RDP command only works from Windows. You'll need the [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli-windows) installed at the OS level.
-
-    ```shell
-    az login
-    ```
-
-    Check you are in the right subscription. (This is your "current context".)
-
-    ```shell
-    az account show
-    ```
-
-    > If not then [change subscription](https://docs.microsoft.com/en-us/cli/azure/manage-azure-subscriptions-azure-cli#change-the-active-subscription).
-
-1. RDP
-
-    Run the command you copied earlier.
-
-    ```shell
-    az network bastion rdp --name bastion --resource-group bastion --target-resource-id <vmid>
-    ```
-
-    You will be prompted to authenticate using your AAD credentials.
-
-    ![authenticate]/images/authenticate.png)
-
-    If you have Virtual Machine Administrator Login or Virtual Machine User Login then the RDP session will open.
-
-    ![rdp]/images/rdp.png)
-
-## SSH
-
-## Tunnelling
+```shell
+admin_ssh_to_linux_server = "az network bastion ssh --name bastion --resource-group bastion --target-resource-id <linux_vmid> --username azureadmin --auth-type ssh-key --ssh-key ~/.ssh/id_rsa"
+admin_username = <sensitive>
+example_secret_cli = "az login --identity --allow-no-subscriptions --output none; az keyvault secret show --name sql --vault-name bastion-<uniq>-kv --query value --output tsv"
+example_secret_powershell = "Connect-AzAccount -Identity | Out-Null; Get-AzKeyVaultSecret -Name sql -VaultName bastion-<uniq>-kv -AsPlainText"
+rdp_to_windows_server = "az network bastion rdp --name bastion --resource-group bastion --target-resource-id <windows_vmid>"
+tunnel_to_linux_server = "az network bastion tunnel --name bastion --resource-group bastion --target-resource-id <linux_vmid> --resource-port 80 --port 80"
+user_ssh_to_linux_server = "az network bastion ssh --name bastion --resource-group bastion --target-resource-id <linux_vmid> --auth-type AAD"
+windows_server_admin_password = <sensitive>
+```
